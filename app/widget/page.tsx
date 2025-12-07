@@ -1,4 +1,5 @@
-import WidgetClient from './WidgetClient'
+import dynamic from 'next/dynamic'
+const WidgetClient = dynamic(() => import('./WidgetClient'), { ssr: false })
 type SearchParams = { [key: string]: string | string[] | undefined }
 
 function todayISO() {
