@@ -5,7 +5,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const sport = searchParams.get('sport') || 'football'
   const league = searchParams.get('league') || 'nfl'
-  const r = await fetchScoreboard(sport, league)
+  const date = searchParams.get('date') || undefined
+  const r = await fetchScoreboard(sport, league, date)
   if (!r.ok) {
     return new Response(JSON.stringify({ error: 'upstream_error', status: r.status }), { status: 502, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
   }
