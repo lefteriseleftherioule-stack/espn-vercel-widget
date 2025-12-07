@@ -24,7 +24,7 @@ function todayISO() {
 }
 
 function toEspnDate(d: string) {
-  return d.replaceAll('-', '')
+  return d.replace(/-/g, '')
 }
 
 function formatDay(d: string) {
