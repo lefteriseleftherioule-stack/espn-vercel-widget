@@ -1,10 +1,5 @@
+import { fetchScoreboard } from '../../lib/espn'
 type SearchParams = { [key: string]: string | string[] | undefined }
-
-async function getData(sport: string, league: string) {
-  const res = await fetch(`/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}`, { cache: 'no-store' })
-  if (!res.ok) return null
-  return res.json()
-}
 
 function scoreLine(event: any) {
   const comp = Array.isArray(event?.competitions) ? event.competitions[0] : null
@@ -19,13 +14,17 @@ function scoreLine(event: any) {
 export default async function Widget({ searchParams }: { searchParams: SearchParams }) {
   const sport = typeof searchParams.sport === 'string' ? searchParams.sport : 'football'
   const league = typeof searchParams.league === 'string' ? searchParams.league : 'nfl'
-  const data = await getData(sport, league)
+  const r = await fetchScoreboard(sport, league)
+  const data = r.ok ? r.data : null
   const events = Array.isArray(data?.events) ? data.events : []
   return (
     <div className="container">
       <div className="title">Scoreboard</div>
       <div className="subtitle">{sport}/{league}</div>
-      {events.length === 0 && (
+      {!r.ok && (
+        <div className="card">Upstream error loading scoreboard</div>
+      )}
+      {r.ok && events.length === 0 && (
         <div className="card">No events</div>
       )}
       {events.map((e: any) => (
