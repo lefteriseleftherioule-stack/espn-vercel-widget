@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic'
-const WidgetClient = dynamic(() => import('./WidgetClient'), { ssr: false })
+const WidgetClient = dynamic(() => import('./WidgetClient.tsx'), { ssr: false })
 type SearchParams = { [key: string]: string | string[] | undefined }
 
 function todayISO() {
