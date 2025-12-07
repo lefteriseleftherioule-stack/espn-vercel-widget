@@ -1,11 +1,16 @@
-export function buildScoreboardUrl(sport: string, league: string) {
+export function buildScoreboardUrl(sport: string, league: string, date?: string) {
   const s = sport || 'football'
   const l = league || 'nfl'
-  return `https://site.api.espn.com/apis/site/v2/sports/${encodeURIComponent(s)}/${encodeURIComponent(l)}/scoreboard`
+  const base = `https://site.api.espn.com/apis/site/v2/sports/${encodeURIComponent(s)}/${encodeURIComponent(l)}/scoreboard`
+  if (date) {
+    const d = date.replaceAll('-', '')
+    return `${base}?dates=${encodeURIComponent(d)}`
+  }
+  return base
 }
 
-export async function fetchScoreboard(sport: string, league: string) {
-  const url = buildScoreboardUrl(sport, league)
+export async function fetchScoreboard(sport: string, league: string, date?: string) {
+  const url = buildScoreboardUrl(sport, league, date)
   const res = await fetch(url, { next: { revalidate: 30 } })
   if (!res.ok) {
     return { ok: false, status: res.status, data: null }
