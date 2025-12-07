@@ -3,7 +3,7 @@ export function buildScoreboardUrl(sport: string, league: string, date?: string)
   const l = league || 'nfl'
   const base = `https://site.api.espn.com/apis/site/v2/sports/${encodeURIComponent(s)}/${encodeURIComponent(l)}/scoreboard`
   if (date) {
-    const d = date.replaceAll('-', '')
+    const d = date.replace(/-/g, '')
     return `${base}?dates=${encodeURIComponent(d)}`
   }
   return base
