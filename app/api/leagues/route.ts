@@ -38,8 +38,25 @@ export async function GET(req: NextRequest) {
           if (!r.ok) return null
           const j = await r.json()
           const code = j?.slug ?? j?.abbr ?? j?.uid ?? (j?.id != null ? String(j.id) : '')
-          const name = j?.displayName ?? j?.name ?? j?.shortName ?? ''
-          if (code && name) return { code: String(code), name: String(name) }
+          let name = j?.displayName ?? j?.name ?? j?.shortName ?? ''
+          if (typeof name === 'string') name = name.replace(/^\s*2\.\s*/, '')
+          const pfx = (code || '').split('.')[0].toLowerCase()
+          const region = (() => {
+            const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+            const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
+            const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
+            const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
+            const sa = ['conmebol','bra','arg','chi','col','per','uru','par','ecu','bol','ven']
+            const oc = ['ofc','aus','nzl']
+            if (europe.includes(pfx)) return 'Europe'
+            if (na.includes(pfx)) return 'North America'
+            if (sa.includes(pfx)) return 'South America'
+            if (asia.includes(pfx)) return 'Asia'
+            if (africa.includes(pfx)) return 'Africa'
+            if (oc.includes(pfx)) return 'Oceania'
+            return 'Other'
+          })()
+          if (code && name) return { code: String(code), name: String(name), region }
           return null
         } catch { return null }
       }))
@@ -69,10 +86,28 @@ export async function GET(req: NextRequest) {
   } else if (Array.isArray((json as any)?.sports)) {
     leagues = ((json as any).sports as any[]).flatMap((s: any) => Array.isArray(s?.leagues) ? s.leagues : [])
   }
-  const mappedRaw = leagues.map((l: any) => ({
-    code: l?.slug ?? l?.abbr ?? l?.uid ?? (l?.id != null ? String(l.id) : ''),
-    name: l?.displayName ?? l?.name ?? l?.shortName ?? ''
-  })).filter((x: any) => x.code && x.name)
+  const mappedRaw = leagues.map((l: any) => {
+    const code = l?.slug ?? l?.abbr ?? l?.uid ?? (l?.id != null ? String(l.id) : '')
+    let name = l?.displayName ?? l?.name ?? l?.shortName ?? ''
+    if (typeof name === 'string') name = name.replace(/^\s*2\.\s*/, '')
+    const pfx = (code || '').split('.')[0].toLowerCase()
+    const region = (() => {
+      const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+      const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
+      const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
+      const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
+      const sa = ['conmebol','bra','arg','chi','col','per','uru','par','ecu','bol','ven']
+      const oc = ['ofc','aus','nzl']
+      if (europe.includes(pfx)) return 'Europe'
+      if (na.includes(pfx)) return 'North America'
+      if (sa.includes(pfx)) return 'South America'
+      if (asia.includes(pfx)) return 'Asia'
+      if (africa.includes(pfx)) return 'Africa'
+      if (oc.includes(pfx)) return 'Oceania'
+      return 'Other'
+    })()
+    return { code, name, region }
+  }).filter((x: any) => x.code && x.name)
   const dedup = new Map<string, any>()
   for (const item of mappedRaw) {
     if (!dedup.has(item.code)) dedup.set(item.code, item)
