@@ -67,10 +67,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   const [leagueSel, setLeagueSel] = useState<string>(initialLeague || 'eng.1')
   const [customLeague, setCustomLeague] = useState<string>('')
   const [date, setDate] = useState<string>(initialDate)
-  const [sport, setSport] = useState<string>(() => {
-    const s = (initialSport || 'soccer').trim().replace(/['"]/g, '')
-    return s || 'soccer'
-  })
+  const [sport, setSport] = useState<string>(initialSport || 'soccer')
   const [data, setData] = useState<Scoreboard | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -197,7 +194,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           <label>
             League
             <select value={leagueSel} onChange={(e) => setLeagueSel(e.target.value)} style={{ marginLeft: 8 }}>
-              {((leagues && leagues.length > 0) ? leagues : popularLeagues).map((l) => (
+              {(leagues ?? []).map((l) => (
                 <option key={l.code} value={l.code}>{l.name}</option>
               ))}
               <option value="__custom__">Custom code…</option>
