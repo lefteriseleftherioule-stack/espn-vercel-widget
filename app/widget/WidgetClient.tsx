@@ -114,6 +114,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   const [leagues, setLeagues] = useState<{ code: string; name: string }[] | null>(null)
   const [stats, setStats] = useState<Record<string, any>>({})
   const activeDayRef = useRef<HTMLDivElement | null>(null)
+  const daysbarRef = useRef<HTMLDivElement | null>(null)
   const [showCalendar, setShowCalendar] = useState<boolean>(false)
   const [calendarCursor, setCalendarCursor] = useState<string>(initialDate)
   const [logs, setLogs] = useState<string[]>([])
@@ -204,7 +205,14 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   const events = Array.isArray((data as any)?.events) ? (data as any).events : []
   const days = rangeDays(date)
   useEffect(() => {
-    activeDayRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' })
+    const el = activeDayRef.current
+    const container = daysbarRef.current
+    if (el && container) {
+      const target = el.offsetLeft + el.offsetWidth / 2 - container.clientWidth / 2
+      const max = Math.max(0, container.scrollWidth - container.clientWidth)
+      const left = Math.min(Math.max(0, target), max)
+      container.scrollTo({ left, behavior: 'auto' })
+    }
   }, [date])
 
   function monthMatrix(cursorISO: string) {
@@ -262,7 +270,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
 
   return (
     <div className="container">
-      <div className="daysbar">
+      <div className="daysbar" ref={daysbarRef}>
         {days.map((d) => (
           <div
             key={d}
