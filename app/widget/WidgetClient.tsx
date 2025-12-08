@@ -89,6 +89,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
       setLogs((prev) => [...prev.slice(-9), `scoreboard: loading sport=${sport} league=${league} date=${date}`])
       setLoading(true)
       setError(null)
+      setData(null)
       try {
         const url = `/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(date))}`
         const res = await fetch(url, { cache: 'no-store' })
@@ -98,6 +99,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
         setLogs((prev) => [...prev.slice(-9), `scoreboard: ok events=${Array.isArray((json as any)?.events) ? (json as any).events.length : 0}`])
       } catch (e: any) {
         if (!cancelled) setError('Failed to load scores')
+        if (!cancelled) setData(null)
         setLogs((prev) => [...prev.slice(-9), `scoreboard: error ${String(e?.message || e)}`])
       } finally {
         if (!cancelled) setLoading(false)
@@ -272,7 +274,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
       {error && <div className="card">{error}</div>}
       {!loading && !error && events.length === 0 && <div className="card">No events</div>}
 
-      {events.map((e: any) => {
+      {!loading && !error && events.map((e: any) => {
         const [a, b] = extractCompetitors(e)
         const reportUrl = sport === 'soccer' ? `https://www.espn.com/soccer/match?gameId=${e.id}` : ''
         const key = `${league}:${e.id}`
