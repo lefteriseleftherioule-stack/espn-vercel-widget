@@ -86,17 +86,39 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   useEffect(() => {
     let cancelled = false
     async function run() {
-      setLogs((prev) => [...prev.slice(-9), `scoreboard: loading sport=${sport} league=${league} date=${date}`])
+      const base = new Date(date)
+      const datesWanted: string[] = []
+      for (let i = -3; i <= 0; i++) {
+        const d = new Date(base)
+        d.setDate(base.getDate() + i)
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const da = String(d.getDate()).padStart(2, '0')
+        datesWanted.push(`${y}-${m}-${da}`)
+      }
+      setLogs((prev) => [...prev.slice(-9), `scoreboard: loading sport=${sport} league=${league} dates=${datesWanted.join(',')}`])
       setLoading(true)
       setError(null)
       setData(null)
       try {
-        const url = `/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(date))}`
-        const res = await fetch(url, { cache: 'no-store' })
-        if (!res.ok) throw new Error(`status ${res.status}`)
-        const json = await res.json()
-        if (!cancelled) setData(json)
-        setLogs((prev) => [...prev.slice(-9), `scoreboard: ok events=${Array.isArray((json as any)?.events) ? (json as any).events.length : 0}`])
+        const results = await Promise.all(datesWanted.map(async (dISO) => {
+          try {
+            const url = `/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(dISO))}`
+            const res = await fetch(url, { cache: 'no-store' })
+            if (!res.ok) return { date: dISO, ok: false, events: [] }
+            const json = await res.json()
+            const ev = Array.isArray((json as any)?.events) ? (json as any).events : []
+            return { date: dISO, ok: true, events: ev }
+          } catch {
+            return { date: dISO, ok: false, events: [] }
+          }
+        }))
+        const anySuccess = results.some((r) => r.ok)
+        if (!cancelled) {
+          setData({ events: results.flatMap((r) => r.events) })
+          setLogs((prev) => [...prev.slice(-9), `scoreboard: ok days=${results.filter((r)=>r.ok).length} events=${results.reduce((n,r)=>n+r.events.length,0)}`])
+          if (!anySuccess) setError('Failed to load scores')
+        }
       } catch (e: any) {
         if (!cancelled) setError('Failed to load scores')
         if (!cancelled) setData(null)
@@ -222,9 +244,48 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           <label>
             League
             <select value={leagueSel} onChange={(e) => setLeagueSel(e.target.value)} style={{ marginLeft: 8 }}>
-              {((leagues && leagues.length > 0) ? leagues : popularLeagues).map((l) => (
-                <option key={l.code} value={l.code}>{l.name}</option>
-              ))}
+              <optgroup label="Popular">
+                {popularLeagues.map((l) => (
+                  <option key={l.code} value={l.code}>{l.name}</option>
+                ))}
+              </optgroup>
+              {(() => {
+                const arr = (leagues && leagues.length > 0) ? leagues : []
+                const popularSet = new Set(popularLeagues.map((p) => p.code))
+                const regionForCode = (code: string) => {
+                  const pfx = (code || '').split('.')[0].toLowerCase()
+                  const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+                  const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
+                  const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
+                  const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
+                  const sa = ['conmebol','bra','arg','chi','col','per','uru','par','ecu','bol','ven']
+                  const oc = ['ofc','aus','nzl']
+                  if (europe.includes(pfx)) return 'Europe'
+                  if (na.includes(pfx)) return 'North America'
+                  if (sa.includes(pfx)) return 'South America'
+                  if (asia.includes(pfx)) return 'Asia'
+                  if (africa.includes(pfx)) return 'Africa'
+                  if (oc.includes(pfx)) return 'Oceania'
+                  return 'Other'
+                }
+                const groups: Record<string, { code: string; name: string }[]> = {}
+                for (const l of arr) {
+                  if (popularSet.has((l as any).code)) continue
+                  const region = (l as any).region || regionForCode((l as any).code)
+                  if (!groups[region]) groups[region] = []
+                  groups[region].push(l as any)
+                }
+                const order = ['Europe','South America','North America','Asia','Africa','Oceania','Other']
+                return order.map((region) => (
+                  groups[region] && groups[region].length > 0 ? (
+                    <optgroup key={region} label={region}>
+                      {groups[region].map((l) => (
+                        <option key={l.code} value={l.code}>{l.name}</option>
+                      ))}
+                    </optgroup>
+                  ) : null
+                ))
+              })()}
               <option value="__custom__">Custom code…</option>
             </select>
           </label>
