@@ -24,6 +24,37 @@ export async function GET(req: NextRequest) {
     return s || 'soccer'
   })()
   const url = `https://site.api.espn.com/apis/site/v2/sports/${encodeURIComponent(sport)}`
+  const coreUrl = `https://sports.core.api.espn.com/v2/sports/${encodeURIComponent(sport)}/leagues?limit=500`
+  try {
+    const coreRes = await fetch(coreUrl, { next: { revalidate: 3600 } })
+    if (coreRes.ok) {
+      const coreJson = await coreRes.json()
+      const items: any[] = Array.isArray(coreJson?.items) ? coreJson.items : []
+      const refs: string[] = items.map((it: any) => typeof it === 'string' ? it : (it?.$ref ?? it?.ref ?? it?.href ?? '')).filter((x: string) => !!x)
+      const limited = refs.slice(0, 300)
+      const details = await Promise.all(limited.map(async (href: string) => {
+        try {
+          const r = await fetch(href, { next: { revalidate: 3600 } })
+          if (!r.ok) return null
+          const j = await r.json()
+          const code = j?.id ?? j?.slug ?? ''
+          const name = j?.displayName ?? j?.name ?? ''
+          if (code && name) return { code: String(code), name: String(name) }
+          return null
+        } catch { return null }
+      }))
+      const mappedCore = details.filter(Boolean) as any[]
+      if (mappedCore.length > 0) {
+        const dedup = new Map<string, any>()
+        for (const item of mappedCore) {
+          if (!dedup.has(item.code)) dedup.set(item.code, item)
+        }
+        const finalCore = Array.from(dedup.values()).sort((a: any, b: any) => a.name.localeCompare(b.name))
+        cache[sport] = { ts: Date.now(), leagues: finalCore }
+        return new Response(JSON.stringify({ leagues: finalCore }), { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } })
+      }
+    }
+  } catch {}
   const res = await fetch(url, { next: { revalidate: 3600 } })
   if (!res.ok) {
     const cached = cache[sport]?.leagues
