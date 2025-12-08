@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 
-export async function GET(_req: NextRequest) {
-  const url = 'https://site.api.espn.com/apis/site/v2/sports/soccer'
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const sport = searchParams.get('sport') || 'soccer'
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${encodeURIComponent(sport)}`
   const res = await fetch(url, { next: { revalidate: 3600 } })
   if (!res.ok) return new Response(JSON.stringify({ error: 'upstream_error', status: res.status }), { status: 502, headers: { 'content-type': 'application/json' } })
   const json = await res.json()
