@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Scoreboard = any
 
@@ -63,15 +63,19 @@ function extractCompetitors(event: any) {
   return [a, b]
 }
 
-export default function WidgetClient({ initialLeague, initialDate }: { initialLeague: string; initialDate: string }) {
+export default function WidgetClient({ initialLeague, initialDate, initialSport = 'soccer' }: { initialLeague: string; initialDate: string; initialSport?: string }) {
   const [leagueSel, setLeagueSel] = useState<string>(initialLeague || 'eng.1')
   const [customLeague, setCustomLeague] = useState<string>('')
   const [date, setDate] = useState<string>(initialDate)
+  const [sport, setSport] = useState<string>(initialSport || 'soccer')
   const [data, setData] = useState<Scoreboard | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [leagues, setLeagues] = useState<{ code: string; name: string }[] | null>(null)
   const [stats, setStats] = useState<Record<string, any>>({})
+  const activeDayRef = useRef<HTMLDivElement | null>(null)
+  const [showCalendar, setShowCalendar] = useState<boolean>(false)
+  const [calendarCursor, setCalendarCursor] = useState<string>(initialDate)
 
   const league = useMemo(() => (leagueSel === '__custom__' ? (customLeague || 'eng.1') : leagueSel), [leagueSel, customLeague])
 
@@ -81,7 +85,7 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
       setLoading(true)
       setError(null)
       try {
-        const url = `/api/scoreboard?sport=soccer&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(date))}`
+        const url = `/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(date))}`
         const res = await fetch(url, { cache: 'no-store' })
         if (!res.ok) throw new Error(`status ${res.status}`)
         const json = await res.json()
@@ -94,13 +98,13 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
     }
     run()
     return () => { cancelled = true }
-  }, [league, date])
+  }, [league, date, sport])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
       try {
-        const res = await fetch('/api/leagues')
+        const res = await fetch(`/api/leagues?sport=${encodeURIComponent(sport)}`)
         if (!res.ok) return
         const json = await res.json()
         if (!cancelled) setLeagues(json?.leagues ?? null)
@@ -108,10 +112,32 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
     }
     run()
     return () => { cancelled = true }
-  }, [])
+  }, [sport])
 
   const events = Array.isArray((data as any)?.events) ? (data as any).events : []
   const days = rangeDays(date)
+  useEffect(() => {
+    activeDayRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' })
+  }, [date])
+
+  function monthMatrix(cursorISO: string) {
+    const base = new Date(cursorISO)
+    const y = base.getFullYear()
+    const m = base.getMonth()
+    const first = new Date(y, m, 1)
+    const startDow = first.getDay()
+    const daysInMonth = new Date(y, m + 1, 0).getDate()
+    const cells: (string | null)[] = []
+    for (let i = 0; i < startDow; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      cells.push(iso)
+    }
+    while (cells.length % 7 !== 0) cells.push(null)
+    const weeks: (string | null)[][] = []
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+    return { y, m, weeks }
+  }
 
   async function loadStats(eventId: string) {
     const key = `${league}:${eventId}`
@@ -149,10 +175,14 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
 
   return (
     <div className="container">
-      <div className="title">Football Scores</div>
       <div className="daysbar">
         {days.map((d) => (
-          <div key={d} className={`daypill ${d === date ? 'daypill-active' : ''}`} onClick={() => setDate(d)}>
+          <div
+            key={d}
+            ref={d === date ? activeDayRef : undefined}
+            className={`daypill ${d === date ? 'daypill-active' : ''}`}
+            onClick={() => setDate(d)}
+          >
             <div>{new Date(d).toLocaleDateString(undefined, { weekday: 'long' })}</div>
             <div className="muted">{new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}</div>
           </div>
@@ -164,7 +194,7 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
           <label>
             League
             <select value={leagueSel} onChange={(e) => setLeagueSel(e.target.value)} style={{ marginLeft: 8 }}>
-              {(leagues ?? popularLeagues).map((l) => (
+              {(leagues ?? []).map((l) => (
                 <option key={l.code} value={l.code}>{l.name}</option>
               ))}
               <option value="__custom__">Custom code…</option>
@@ -178,9 +208,36 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
               style={{ flex: 1 }}
             />
           )}
-          <label style={{ marginLeft: 'auto' }}>
+          <label style={{ marginLeft: 'auto', position: 'relative' }}>
             Date
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ marginLeft: 8 }} />
+            <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setCalendarCursor(e.target.value) }} style={{ marginLeft: 8 }} />
+            <button onClick={() => setShowCalendar((v) => !v)} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6, background: '#374151', color: '#fff' }}>Monthly</button>
+            {showCalendar && (
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 10, background: '#1f2937', border: '1px solid #374151', borderRadius: 8, padding: 12, width: 320 }}>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <button onClick={() => { const d = new Date(calendarCursor); d.setMonth(d.getMonth() - 1); const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())).padStart(2, '0')}`; setCalendarCursor(iso) }} style={{ padding: '4px 8px', borderRadius: 6, background: '#374151', color: '#fff' }}>Prev</button>
+                  <span style={{ marginLeft: 8, marginRight: 'auto' }}>{new Date(calendarCursor).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                  <button onClick={() => { const d = new Date(calendarCursor); d.setMonth(d.getMonth() + 1); const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())).padStart(2, '0')}`; setCalendarCursor(iso) }} style={{ padding: '4px 8px', borderRadius: 6, background: '#374151', color: '#fff' }}>Next</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((wd) => (
+                    <div key={wd} className="muted" style={{ textAlign: 'center' }}>{wd}</div>
+                  ))}
+                </div>
+                {monthMatrix(calendarCursor).weeks.map((w, wi) => (
+                  <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
+                    {w.map((cell, ci) => (
+                      <div key={ci} style={{ height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: cell ? '#111827' : 'transparent', border: cell ? '1px solid #374151' : 'none', borderRadius: 6, cursor: cell ? 'pointer' : 'default' }}
+                        onClick={() => { if (!cell) return; setDate(cell); setCalendarCursor(cell); setShowCalendar(false) }}>
+                        <span className={cell === date ? 'badge' : ''}>
+                          {cell ? new Date(cell).getDate() : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </label>
         </div>
       </div>
@@ -191,7 +248,7 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
 
       {events.map((e: any) => {
         const [a, b] = extractCompetitors(e)
-        const reportUrl = `https://www.espn.com/soccer/match?gameId=${e.id}`
+        const reportUrl = sport === 'soccer' ? `https://www.espn.com/soccer/match?gameId=${e.id}` : ''
         const key = `${league}:${e.id}`
         return (
           <div className="card" key={e.id}>
@@ -208,8 +265,12 @@ export default function WidgetClient({ initialLeague, initialDate }: { initialLe
               <span className="badge" style={{ marginLeft: 'auto' }}>{e.status?.type?.shortDetail ?? e.status?.type?.detail ?? ''}</span>
             </div>
             <div className="row" style={{ marginTop: 8 }}>
-              <button onClick={() => loadStats(e.id)} style={{ padding: '6px 10px', borderRadius: 6, background: '#374151', color: '#fff' }}>Stats</button>
-              <a href={reportUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', color: '#93c5fd' }}>Match report</a>
+              {sport === 'soccer' && (
+                <button onClick={() => loadStats(e.id)} style={{ padding: '6px 10px', borderRadius: 6, background: '#374151', color: '#fff' }}>Stats</button>
+              )}
+              {sport === 'soccer' && (
+                <a href={reportUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', color: '#93c5fd' }}>Match report</a>
+              )}
             </div>
             {stats[key] && (
               <div className="grid" style={{ marginTop: 8 }}>
