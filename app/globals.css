@@ -9,8 +9,8 @@ html, body { margin: 0; padding: 0; font-family: ui-sans-serif, system-ui, -appl
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .muted { color: #9ca3af; }
 .footer { margin-top: 24px; font-size: 12px; color: #9ca3af; }
-.daysbar { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
-.daypill { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 8px 12px; min-width: 140px; cursor: pointer; }
+.daysbar { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; scroll-snap-type: x mandatory; }
+.daypill { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 8px 12px; min-width: 140px; cursor: pointer; scroll-snap-align: center; }
 .daypill-active { background: #374151; }
 .selector { display: flex; gap: 8px; align-items: center; }
 select { background: #ffffff; color: #111827; border-radius: 6px; padding: 6px; }
