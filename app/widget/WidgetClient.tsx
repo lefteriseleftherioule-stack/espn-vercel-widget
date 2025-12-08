@@ -44,11 +44,48 @@ function formatDay(d: string) {
 
 function teamLogoHref(team: any): string {
   const logos = team?.logos
-  if (Array.isArray(logos) && logos.length > 0 && logos[0]?.href) return logos[0].href
+  const pickFromArray = (arr: any[]) => {
+    const withHref = arr.filter((l) => l?.href)
+    if (withHref.length === 0) return ''
+    const scored = withHref.map((l) => {
+      const rels: string[] = Array.isArray(l?.rel) ? l.rel.map((r: any) => String(r).toLowerCase()) : []
+      let score = 0
+      if (rels.includes('full')) score += 3
+      if (rels.includes('logo')) score += 2
+      if (rels.includes('dark')) score += 1
+      const w = typeof l?.width === 'number' ? l.width : 0
+      score -= Math.abs(w - 64) / 64
+      return { href: l.href, score }
+    })
+    scored.sort((a, b) => b.score - a.score)
+    return scored[0]?.href ?? ''
+  }
+  if (Array.isArray(logos) && logos.length > 0) {
+    const h = pickFromArray(logos)
+    if (h) return h
+  }
   const logo = team?.logo
   if (typeof logo === 'string') return logo
   if (logo?.href) return logo.href
+  const alt = team?.alternateLogo
+  if (typeof alt === 'string') return alt
+  if (alt?.href) return alt.href
   return ''
+}
+
+function teamColor(team: any): string {
+  const c = team?.color
+  const hex = typeof c === 'string' ? c.replace(/#/g, '').trim() : ''
+  return hex ? `#${hex}` : '#374151'
+}
+
+function contrastColor(hex: string): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2) || '00', 16)
+  const g = parseInt(h.substring(2, 4) || '00', 16)
+  const b = parseInt(h.substring(4, 6) || '00', 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#111827' : '#fff'
 }
 
 function teamName(team: any): string {
@@ -343,19 +380,25 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           <div className="card" key={e.id}>
             <div className="row" style={{ alignItems: 'center', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {a && teamLogoHref(a) ? (
-                  <img src={teamLogoHref(a)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
-                ) : (
-                  a ? <div style={{ width: 24, height: 24, borderRadius: 4, background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>{teamInitials(a)}</div> : null
+                {a && (
+                  <div style={{ width: 24, height: 24, borderRadius: 4, background: teamColor(a), color: contrastColor(teamColor(a)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, position: 'relative', overflow: 'hidden' }}>
+                    <span>{teamInitials(a)}</span>
+                    {teamLogoHref(a) && (
+                      <img src={teamLogoHref(a)} alt="" width={24} height={24} style={{ objectFit: 'contain', position: 'absolute', inset: 0 }} onError={(e) => { (e.currentTarget.style.display = 'none') }} />
+                    )}
+                  </div>
                 )}
                 <span>{teamName(a)}</span>
               </div>
               <span className="muted">v</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {b && teamLogoHref(b) ? (
-                  <img src={teamLogoHref(b)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
-                ) : (
-                  b ? <div style={{ width: 24, height: 24, borderRadius: 4, background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>{teamInitials(b)}</div> : null
+                {b && (
+                  <div style={{ width: 24, height: 24, borderRadius: 4, background: teamColor(b), color: contrastColor(teamColor(b)), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, position: 'relative', overflow: 'hidden' }}>
+                    <span>{teamInitials(b)}</span>
+                    {teamLogoHref(b) && (
+                      <img src={teamLogoHref(b)} alt="" width={24} height={24} style={{ objectFit: 'contain', position: 'absolute', inset: 0 }} onError={(e) => { (e.currentTarget.style.display = 'none') }} />
+                    )}
+                  </div>
                 )}
                 <span>{teamName(b)}</span>
               </div>
