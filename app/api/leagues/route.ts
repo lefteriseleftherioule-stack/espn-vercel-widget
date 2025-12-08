@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
           if (typeof name === 'string') name = name.replace(/^\s*2\.\s*/, '')
           const pfx = (code || '').split('.')[0].toLowerCase()
           const region = (() => {
-            const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+            const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal','cyp']
             const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
             const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
             const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     if (typeof name === 'string') name = name.replace(/^\s*2\.\s*/, '')
     const pfx = (code || '').split('.')[0].toLowerCase()
     const region = (() => {
-      const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+      const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal','cyp']
       const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
       const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
       const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
