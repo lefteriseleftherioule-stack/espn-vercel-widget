@@ -3,7 +3,11 @@ import { fetchScoreboard } from '../../../lib/espn'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const sport = searchParams.get('sport') || 'soccer'
+  const rawSport = searchParams.get('sport') || 'soccer'
+  const sport = (() => {
+    const s = (rawSport || '').trim().replace(/['"]/g, '')
+    return s || 'soccer'
+  })()
   const league = searchParams.get('league') || 'nfl'
   const date = searchParams.get('date') || undefined
   const r = await fetchScoreboard(sport, league, date)
