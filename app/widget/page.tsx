@@ -14,9 +14,10 @@ function todayISO() {
 export default function Widget({ searchParams }: { searchParams: SearchParams }) {
   const league = typeof searchParams.league === 'string' ? searchParams.league : 'eng.1'
   const date = typeof searchParams.date === 'string' ? searchParams.date : todayISO()
+  const sport = typeof searchParams.sport === 'string' ? searchParams.sport : 'soccer'
   return (
     <Suspense fallback={<div className="container"><div className="card">Loading…</div></div>}>
-      <WidgetClient initialLeague={league} initialDate={date} />
+      <WidgetClient initialLeague={league} initialDate={date} initialSport={sport} />
     </Suspense>
   )
 }
