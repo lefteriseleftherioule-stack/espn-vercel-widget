@@ -79,12 +79,14 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   const activeDayRef = useRef<HTMLDivElement | null>(null)
   const [showCalendar, setShowCalendar] = useState<boolean>(false)
   const [calendarCursor, setCalendarCursor] = useState<string>(initialDate)
+  const [logs, setLogs] = useState<string[]>([])
 
   const league = useMemo(() => (leagueSel === '__custom__' ? (customLeague || 'eng.1') : leagueSel), [leagueSel, customLeague])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
+      setLogs((prev) => [...prev.slice(-9), `scoreboard: loading sport=${sport} league=${league} date=${date}`])
       setLoading(true)
       setError(null)
       try {
@@ -93,8 +95,10 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
         if (!res.ok) throw new Error(`status ${res.status}`)
         const json = await res.json()
         if (!cancelled) setData(json)
+        setLogs((prev) => [...prev.slice(-9), `scoreboard: ok events=${Array.isArray((json as any)?.events) ? (json as any).events.length : 0}`])
       } catch (e: any) {
         if (!cancelled) setError('Failed to load scores')
+        setLogs((prev) => [...prev.slice(-9), `scoreboard: error ${String(e?.message || e)}`])
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -107,9 +111,11 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
     let cancelled = false
     async function run() {
       try {
+        setLogs((prev) => [...prev.slice(-9), `leagues: loading sport=${sport}`])
         const res = await fetch(`/api/leagues?sport=${encodeURIComponent(sport)}`)
         if (!res.ok) {
           if (!cancelled) setLeagues(popularLeagues)
+          setLogs((prev) => [...prev.slice(-9), `leagues: error status=${res.status} fallback=popular`])
           return
         }
         const json = await res.json()
@@ -117,6 +123,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
         const finalLeagues = (serverLeagues.length > 0) ? serverLeagues : popularLeagues
         if (!cancelled) {
           setLeagues(finalLeagues)
+          setLogs((prev) => [...prev.slice(-9), `leagues: ok count=${finalLeagues.length}${serverLeagues.length === 0 ? ' (fallback=popular)' : ''}`])
           if (finalLeagues.length > 0) {
             setLeagueSel((prev) => {
               const exists = finalLeagues.some((l: any) => l.code === prev) || prev === '__custom__'
@@ -124,7 +131,8 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
             })
           }
         }
-      } catch {
+      } catch (e: any) {
+        setLogs((prev) => [...prev.slice(-9), `leagues: exception ${String(e?.message || e)} fallback=popular`])
         if (!cancelled) setLeagues(popularLeagues)
       }
     }
@@ -301,6 +309,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           </div>
         )
       })}
+      <div className="footer">{logs.join(' • ')}</div>
     </div>
   )
 }
