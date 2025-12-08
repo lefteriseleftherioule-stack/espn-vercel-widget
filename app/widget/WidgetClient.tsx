@@ -150,9 +150,34 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           }
         }))
         const anySuccess = results.some((r) => r.ok)
+        let combined = results.flatMap((r) => r.events)
+        if (combined.length === 0) {
+          const forwardDates: string[] = []
+          for (let i = 1; i <= 3; i++) {
+            const d = new Date(base)
+            d.setDate(base.getDate() + i)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const da = String(d.getDate()).padStart(2, '0')
+            forwardDates.push(`${y}-${m}-${da}`)
+          }
+          const forwardResults = await Promise.all(forwardDates.map(async (dISO) => {
+            try {
+              const url = `/api/scoreboard?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}&date=${encodeURIComponent(toEspnDate(dISO))}`
+              const res = await fetch(url, { cache: 'no-store' })
+              if (!res.ok) return { date: dISO, ok: false, events: [] }
+              const json = await res.json()
+              const ev = Array.isArray((json as any)?.events) ? (json as any).events : []
+              return { date: dISO, ok: true, events: ev }
+            } catch {
+              return { date: dISO, ok: false, events: [] }
+            }
+          }))
+          combined = forwardResults.flatMap((r) => r.events)
+        }
         if (!cancelled) {
-          setData({ events: results.flatMap((r) => r.events) })
-          if (!anySuccess) setError('Failed to load scores')
+          setData({ events: combined })
+          if (!anySuccess && combined.length === 0) setError('No events')
         }
       } catch (e: any) {
         if (!cancelled) setError('Failed to load scores')
