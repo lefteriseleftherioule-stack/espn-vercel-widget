@@ -399,6 +399,12 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
 
       {!loading && !error && events.map((e: any) => {
         const [a, b] = extractCompetitors(e)
+        const comp = Array.isArray(e?.competitions) ? e.competitions[0] : null
+        const competitors = Array.isArray(comp?.competitors) ? comp.competitors : []
+        const ca = competitors[0] || null
+        const cb = competitors[1] || null
+        const aScore = ca && (ca.score != null) ? String(ca.score) : ''
+        const bScore = cb && (cb.score != null) ? String(cb.score) : ''
         const reportUrl = sport === 'soccer' ? `https://www.espn.com/soccer/match?gameId=${e.id}` : ''
         const key = `${league}:${e.id}`
         return (
@@ -414,6 +420,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
                   </div>
                 )}
                 <span>{teamName(a)}</span>
+                {aScore && <span style={{ marginLeft: 8, fontWeight: 600 }}>{aScore}</span>}
               </div>
               <span className="muted">v</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -426,6 +433,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
                   </div>
                 )}
                 <span>{teamName(b)}</span>
+                {bScore && <span style={{ marginLeft: 8, fontWeight: 600 }}>{bScore}</span>}
               </div>
               <span className="badge" style={{ marginLeft: 'auto' }}>{e.status?.type?.shortDetail ?? e.status?.type?.detail ?? ''}</span>
               {(() => {
