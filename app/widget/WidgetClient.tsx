@@ -254,7 +254,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
                 const popularSet = new Set(popularLeagues.map((p) => p.code))
                 const regionForCode = (code: string) => {
                   const pfx = (code || '').split('.')[0].toLowerCase()
-                  const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal']
+                  const europe = ['uefa','eng','esp','ita','ger','fra','ned','por','sco','tur','gre','bel','aut','sui','rus','ukr','nor','den','swe','pol','rou','cze','svk','hun','bul','isl','irl','wal','cyp']
                   const africa = ['caf','alg','egy','mor','tun','nga','gha','civ','sen','rsa','cam']
                   const asia = ['afc','jpn','kor','chn','tha','vnm','ind','irn','irq','sau','uae','qat','jor']
                   const na = ['concacaf','usa','mex','can','crc','pan','jam','hon']
@@ -343,15 +343,31 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           <div className="card" key={e.id}>
             <div className="row" style={{ alignItems: 'center', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {a && teamLogoHref(a) && <img src={teamLogoHref(a)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />}
+                {a && teamLogoHref(a) ? (
+                  <img src={teamLogoHref(a)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
+                ) : (
+                  a ? <div style={{ width: 24, height: 24, borderRadius: 4, background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>{teamInitials(a)}</div> : null
+                )}
                 <span>{teamName(a)}</span>
               </div>
               <span className="muted">v</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {b && teamLogoHref(b) && <img src={teamLogoHref(b)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />}
+                {b && teamLogoHref(b) ? (
+                  <img src={teamLogoHref(b)} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />
+                ) : (
+                  b ? <div style={{ width: 24, height: 24, borderRadius: 4, background: '#374151', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>{teamInitials(b)}</div> : null
+                )}
                 <span>{teamName(b)}</span>
               </div>
               <span className="badge" style={{ marginLeft: 'auto' }}>{e.status?.type?.shortDetail ?? e.status?.type?.detail ?? ''}</span>
+              {(() => {
+                const dt = e?.date ? new Date(e.date) : null
+                const y = dt ? dt.getFullYear() : null
+                const m = dt ? String(dt.getMonth() + 1).padStart(2, '0') : null
+                const da = dt ? String(dt.getDate()).padStart(2, '0') : null
+                const iso = (y && m && da) ? `${y}-${m}-${da}` : ''
+                return (iso && iso !== date) ? <span className="muted" style={{ marginLeft: 8 }}>{dt?.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span> : null
+              })()}
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               {sport === 'soccer' && (
@@ -375,4 +391,10 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
       <div className="footer">{logs.join(' • ')}</div>
     </div>
   )
+}
+function teamInitials(team: any): string {
+  const abbr = team?.abbreviation ?? team?.shortName ?? team?.shortDisplayName ?? team?.name ?? ''
+  const s = String(abbr)
+  const letters = s.replace(/[^A-Za-z]/g, '')
+  return letters.slice(0, 2).toUpperCase() || s.slice(0, 2).toUpperCase()
 }
