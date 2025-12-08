@@ -67,7 +67,10 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
   const [leagueSel, setLeagueSel] = useState<string>(initialLeague || 'eng.1')
   const [customLeague, setCustomLeague] = useState<string>('')
   const [date, setDate] = useState<string>(initialDate)
-  const [sport, setSport] = useState<string>(initialSport || 'soccer')
+  const [sport, setSport] = useState<string>(() => {
+    const s = (initialSport || 'soccer').trim().replace(/['"]/g, '')
+    return s || 'soccer'
+  })
   const [data, setData] = useState<Scoreboard | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,10 +108,25 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
     async function run() {
       try {
         const res = await fetch(`/api/leagues?sport=${encodeURIComponent(sport)}`)
-        if (!res.ok) return
+        if (!res.ok) {
+          if (!cancelled) setLeagues(popularLeagues)
+          return
+        }
         const json = await res.json()
-        if (!cancelled) setLeagues(json?.leagues ?? null)
-      } catch {}
+        const serverLeagues = Array.isArray(json?.leagues) ? json.leagues : []
+        const finalLeagues = (serverLeagues.length > 0) ? serverLeagues : popularLeagues
+        if (!cancelled) {
+          setLeagues(finalLeagues)
+          if (finalLeagues.length > 0) {
+            setLeagueSel((prev) => {
+              const exists = finalLeagues.some((l: any) => l.code === prev) || prev === '__custom__'
+              return exists ? prev : finalLeagues[0].code
+            })
+          }
+        }
+      } catch {
+        if (!cancelled) setLeagues(popularLeagues)
+      }
     }
     run()
     return () => { cancelled = true }
@@ -194,7 +212,7 @@ export default function WidgetClient({ initialLeague, initialDate, initialSport 
           <label>
             League
             <select value={leagueSel} onChange={(e) => setLeagueSel(e.target.value)} style={{ marginLeft: 8 }}>
-              {(leagues ?? []).map((l) => (
+              {((leagues && leagues.length > 0) ? leagues : popularLeagues).map((l) => (
                 <option key={l.code} value={l.code}>{l.name}</option>
               ))}
               <option value="__custom__">Custom code…</option>
