@@ -37,8 +37,8 @@ export async function GET(req: NextRequest) {
           const r = await fetch(href, { next: { revalidate: 3600 } })
           if (!r.ok) return null
           const j = await r.json()
-          const code = j?.id ?? j?.slug ?? ''
-          const name = j?.displayName ?? j?.name ?? ''
+          const code = j?.slug ?? j?.abbr ?? j?.uid ?? (j?.id != null ? String(j.id) : '')
+          const name = j?.displayName ?? j?.name ?? j?.shortName ?? ''
           if (code && name) return { code: String(code), name: String(name) }
           return null
         } catch { return null }
